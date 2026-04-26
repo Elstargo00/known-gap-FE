@@ -211,6 +211,7 @@ export function Workspace({ email }: { email: string }) {
 
 function AnswerPanel({ answer }: { answer: AskResponse }) {
   const showConcepts = answer.mode !== "normal";
+  const [showSources, setShowSources] = useState(false);
   return (
     <section className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm flex flex-col gap-6">
       <div>
@@ -227,25 +228,42 @@ function AnswerPanel({ answer }: { answer: AskResponse }) {
 
       {answer.sources.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold tracking-tight mb-2">Sources</h3>
-          <ul className="flex flex-col gap-2">
-            {answer.sources.map((s) => (
-              <li
-                key={s.chunk_id}
-                className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium">{s.filename}</span>
-                  <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">
-                    score {s.similarity_score.toFixed(3)}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-5 line-clamp-3">
-                  {s.content_preview}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold tracking-tight">
+              Sources{" "}
+              <span className="text-zinc-500 dark:text-zinc-400 font-normal">
+                ({answer.sources.length})
+              </span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowSources((v) => !v)}
+              aria-expanded={showSources}
+              className="text-xs rounded-md border border-zinc-300 dark:border-zinc-700 px-2.5 py-1 text-zinc-600 dark:text-zinc-300 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              {showSources ? "Hide" : "Show"}
+            </button>
+          </div>
+          {showSources && (
+            <ul className="flex flex-col gap-2">
+              {answer.sources.map((s) => (
+                <li
+                  key={s.chunk_id}
+                  className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{s.filename}</span>
+                    <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">
+                      score {s.similarity_score.toFixed(3)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 leading-5 line-clamp-3">
+                    {s.content_preview}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
