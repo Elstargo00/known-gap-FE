@@ -58,7 +58,7 @@ function KnownSpan({
   return (
     <span
       title={`You already know: ${concept}`}
-      className="rounded bg-zinc-100 dark:bg-zinc-800/70 px-0.5 text-zinc-400 dark:text-zinc-500 line-through decoration-zinc-400/70 decoration-[1.5px] underline-offset-2 cursor-help transition hover:text-zinc-600 dark:hover:text-zinc-300 hover:no-underline"
+      className="rounded bg-black px-1 font-bold text-black cursor-help transition-colors hover:bg-transparent hover:text-zinc-900 dark:hover:text-zinc-100"
     >
       {children}
     </span>

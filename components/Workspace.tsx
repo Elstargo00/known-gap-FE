@@ -310,7 +310,7 @@ function ConceptRow({
               <span
                 key={c.canonical_name}
                 title={`Already in your graph: ${c.canonical_name}`}
-                className="text-xs rounded-full px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 line-through decoration-[1.5px]"
+                className="text-xs rounded-full px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium ring-1 ring-emerald-200 dark:ring-emerald-900"
               >
                 {c.display_name}
               </span>
