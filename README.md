@@ -8,7 +8,7 @@ Two pages, gated by a minimal login: `/login` (username + password) and `/` (ask
 
 - **Ask** in three modes:
   - **Normal** — vanilla RAG answer.
-  - **Learning** — full answer with passages you already know wrapped in inline tags and rendered dimmed + struck-through, with a concept tooltip.
+  - **Learning** — concepts you've crossed the `known_score` threshold on are masked as click-to-reveal fill-in-the-blanks, so you can self-test on what you've already seen before the answer hands you the word.
   - **Concise** — skips re-explaining anything in your graph.
 - **Ingest** `.pdf`, `.md`, or `.txt` files (up to 20 MB) straight into the backend's pgvector corpus.
 - **Username + password gate** with a configurable allow-list (`ALLOWED_USERS`) — no registration flow, no user DB.
@@ -83,7 +83,7 @@ app/
 components/
 ├── LoginForm.tsx           # username + password form
 ├── Workspace.tsx           # mode pills, ask form, answer panel, ingest
-└── KnownText.tsx           # parses <known concept="…"> tags → dimmed spans
+└── ClozeText.tsx           # parses <cloze concept="…"> tags → click-to-reveal blanks
 lib/
 ├── jwt.ts                  # jose HS256 sign/verify + UUIDv5 from username
 ├── session.ts              # reads cookie → verifyToken() for page guards
