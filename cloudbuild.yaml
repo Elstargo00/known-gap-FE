@@ -1,0 +1,30 @@
+# Cloud Build pipeline: build the Next.js production image with BuildKit
+# (so the standalone output and build-arg paths work) and push to
+# Artifact Registry.
+#
+# Usage:
+#   gcloud builds submit \
+#     --config=cloudbuild.yaml \
+#     --substitutions=_IMAGE=asia-southeast1-docker.pkg.dev/<project>/<repo>/web:<tag>,\
+#                     _BACKEND_URL=https://known-gap-api-<hash>-as.a.run.app
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    env:
+      - DOCKER_BUILDKIT=1
+    args:
+      - build
+      - --build-arg=NEXT_PUBLIC_BACKEND_URL=${_BACKEND_URL}
+      - --tag=${_IMAGE}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_IMAGE}
+
+images:
+  - ${_IMAGE}
+
+options:
+  logging: CLOUD_LOGGING_ONLY

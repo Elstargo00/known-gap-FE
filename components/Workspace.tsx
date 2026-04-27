@@ -2,15 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { AskMode, AskResponse, IngestResponse } from "@/lib/types";
-import { KnownText } from "./KnownText";
+import type {
+  AskMode,
+  AskResponse,
+  Concept,
+  IngestResponse,
+} from "@/lib/types";
+import { ClozeBadge, ClozeText, countClozeBlanks } from "./ClozeText";
 
 const MODES: { id: AskMode; label: string; hint: string }[] = [
   { id: "normal", label: "Normal", hint: "Vanilla RAG answer." },
   {
     id: "learning",
     label: "Learning",
-    hint: "Full answer with known passages dimmed inline.",
+    hint: "Concepts you've mastered are masked as fill-in-the-blanks.",
   },
   {
     id: "concise",
@@ -211,18 +216,43 @@ export function Workspace({ email }: { email: string }) {
 
 function AnswerPanel({ answer }: { answer: AskResponse }) {
   const showConcepts = answer.mode !== "normal";
+  const isLearning = answer.mode === "learning";
+  const blankCount = isLearning ? countClozeBlanks(answer.answer) : 0;
   const [showSources, setShowSources] = useState(false);
+  const [revealKey, setRevealKey] = useState(0);
+
   return (
     <section className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm flex flex-col gap-6">
       <div>
-        <div className="flex items-center gap-2 mb-3">
-          <h2 className="text-sm font-semibold tracking-tight">Answer</h2>
-          <span className="text-xs rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 font-medium">
-            {answer.mode}
-          </span>
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold tracking-tight">Answer</h2>
+            <span className="text-xs rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 font-medium">
+              {answer.mode}
+            </span>
+            {isLearning && <ClozeBadge text={answer.answer} />}
+          </div>
+          {isLearning && blankCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setRevealKey((k) => k + 1)}
+              className="text-xs rounded-md border border-zinc-300 dark:border-zinc-700 px-2.5 py-1 text-zinc-600 dark:text-zinc-300 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              Reset blanks
+            </button>
+          )}
         </div>
-        <div className="text-sm leading-7 whitespace-pre-wrap">
-          <KnownText text={answer.answer} dimKnown={answer.mode !== "normal"} />
+        {isLearning && blankCount > 0 && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+            Click each blank to reveal the concept. Anything you've seen often
+            enough is masked — try to recall it before peeking.
+          </p>
+        )}
+        <div
+          key={revealKey}
+          className="text-sm leading-7 whitespace-pre-wrap"
+        >
+          <ClozeText text={answer.answer} interactive={isLearning} />
         </div>
       </div>
 
@@ -273,6 +303,7 @@ function AnswerPanel({ answer }: { answer: AskResponse }) {
             label="Known concepts"
             concepts={answer.known_concepts}
             variant="known"
+            clozeConcepts={answer.cloze_concepts}
           />
           <ConceptRow
             label="Unknown concepts"
@@ -289,43 +320,104 @@ function ConceptRow({
   label,
   concepts,
   variant,
+  clozeConcepts = [],
 }: {
   label: string;
-  concepts: { canonical_name: string; display_name: string }[];
+  concepts: Concept[];
   variant: "known" | "unknown";
+  clozeConcepts?: string[];
 }) {
+  const clozeSet = new Set(clozeConcepts);
   return (
     <div>
       <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
         {label}
       </h4>
       {concepts.length === 0 ? (
-        <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">
-          none
-        </p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">none</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
-          {concepts.map((c) =>
-            variant === "known" ? (
-              <span
-                key={c.canonical_name}
-                title={`Already in your graph: ${c.canonical_name}`}
-                className="text-xs rounded-full px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium ring-1 ring-emerald-200 dark:ring-emerald-900"
-              >
-                {c.display_name}
-              </span>
-            ) : (
-              <span
-                key={c.canonical_name}
-                title={`New to your graph: ${c.canonical_name}`}
-                className="text-xs rounded-full px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-medium ring-1 ring-indigo-200 dark:ring-indigo-900"
-              >
-                {c.display_name}
-              </span>
-            )
-          )}
+          {concepts.map((c) => (
+            <ConceptPill
+              key={c.canonical_name}
+              concept={c}
+              variant={variant}
+              masked={clozeSet.has(c.canonical_name)}
+            />
+          ))}
         </div>
       )}
     </div>
   );
+}
+
+function ConceptPill({
+  concept,
+  variant,
+  masked,
+}: {
+  concept: Concept;
+  variant: "known" | "unknown";
+  masked: boolean;
+}) {
+  const score = clampScore(concept.known_score);
+  const baseClasses =
+    variant === "known"
+      ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 ring-emerald-200 dark:ring-emerald-900"
+      : "bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 ring-indigo-200 dark:ring-indigo-900";
+  const titleParts = [
+    variant === "known"
+      ? `Already in your graph: ${concept.canonical_name}`
+      : `New (or below threshold) in your graph: ${concept.canonical_name}`,
+    `known_score = ${score}/100`,
+  ];
+  if (masked) titleParts.push("Masked as cloze blank in this answer.");
+  return (
+    <span
+      title={titleParts.join("\n")}
+      className={
+        "inline-flex items-center gap-1.5 text-xs rounded-full pl-2.5 pr-1 py-1 font-medium ring-1 " +
+        baseClasses
+      }
+    >
+      <span>{concept.display_name}</span>
+      {masked && (
+        <span
+          aria-label="masked as cloze"
+          className="text-[10px] uppercase tracking-wider rounded bg-white/60 dark:bg-black/30 px-1 py-px font-semibold"
+        >
+          cloze
+        </span>
+      )}
+      <ScoreChip score={score} variant={variant} />
+    </span>
+  );
+}
+
+function ScoreChip({
+  score,
+  variant,
+}: {
+  score: number;
+  variant: "known" | "unknown";
+}) {
+  const tone =
+    variant === "known"
+      ? "bg-emerald-600/90 text-white"
+      : "bg-indigo-600/90 text-white";
+  return (
+    <span
+      className={
+        "inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums px-1.5 py-0.5 min-w-[2ch] " +
+        tone
+      }
+    >
+      {score}
+    </span>
+  );
+}
+
+function clampScore(v: number): number {
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(100, Math.round(v)));
 }
