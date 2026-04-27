@@ -8,8 +8,9 @@ Two pages, gated by a minimal login: `/login` (username + password) and `/` (ask
 
 - **Ask** in three modes:
   - **Normal** — vanilla RAG answer.
-  - **Learning** — concepts you've crossed the `known_score` threshold on are masked as click-to-reveal fill-in-the-blanks, so you can self-test on what you've already seen before the answer hands you the word.
+  - **Learning** — full answer with mastered concepts (per-user `known_score > threshold`) masked as click-to-reveal **fill-in-the-blank** cloze deletions. Each blank carries the concept name as a tooltip and reveals the original surface text on click; a "Reset blanks" control re-masks them all for another pass.
   - **Concise** — skips re-explaining anything in your graph.
+- **Per-user familiarity scoring**: every concept pill shows its current `known_score` (0 – 100). Scores are bumped up when concepts appear only in answers and bumped down when you re-ask something you'd already mastered, so the cloze masking adapts to your real recall over time.
 - **Ingest** `.pdf`, `.md`, or `.txt` files (up to 20 MB) straight into the backend's pgvector corpus.
 - **Username + password gate** with a configurable allow-list (`ALLOWED_USERS`) — no registration flow, no user DB.
 - **httpOnly cookie-based auth**: the JWT never touches client JS; all backend calls are proxied through Next.js server routes that attach `Authorization: Bearer …` from a signed, `httpOnly`, `SameSite=Lax` cookie.
@@ -69,7 +70,7 @@ npm run start    # next start (serves the production build)
 
 ## Project structure
 
-```
+```text
 app/
 ├── api/
 │   ├── ask/route.ts        # proxies POST /ask, attaches Bearer from cookie
@@ -87,7 +88,7 @@ components/
 lib/
 ├── jwt.ts                  # jose HS256 sign/verify + UUIDv5 from username
 ├── session.ts              # reads cookie → verifyToken() for page guards
-└── types.ts                # AskMode / AskResponse / Source / Concept
+└── types.ts                # AskMode / AskResponse / Source / Concept (with known_score)
 scripts/
 └── test-jwt.mjs            # disposable: mint → verify → tamper-reject sanity check
 ```
